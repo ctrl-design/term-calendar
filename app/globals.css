@@ -298,6 +298,96 @@ input[type='file'] {
   opacity: 0.7;
 }
 
+.button-group {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.action-button.secondary {
+  background: #6b7280;
+}
+
+.action-button.secondary:hover {
+  background: #4b5563;
+}
+
+.action-button:disabled {
+  background: #d1d5db;
+  cursor: not-allowed;
+}
+
+.saved-urls-section {
+  margin: 1.25rem 0;
+  padding: 1rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.9rem;
+}
+
+.saved-urls-section h3 {
+  margin: 0 0 0.75rem 0;
+  font-size: 1rem;
+  color: #374151;
+}
+
+.saved-urls-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.saved-url-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: white;
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.65rem;
+  overflow: hidden;
+}
+
+.saved-url-link {
+  flex: 1;
+  background: none;
+  border: none;
+  padding: 0;
+  color: #2563eb;
+  cursor: pointer;
+  font-size: 0.95rem;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.saved-url-link:hover {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+
+.remove-button {
+  background: none;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  font-size: 1.2rem;
+  font-weight: bold;
+  transition: color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.remove-button:hover {
+  color: #991b1b;
+}
+
 @media (max-width: 900px) {
   .calendar-table {
     min-width: 600px;
@@ -307,6 +397,14 @@ input[type='file'] {
 @media (max-width: 680px) {
   .field-grid {
     grid-template-columns: 1fr;
+  }
+
+  .button-group {
+    flex-direction: column;
+  }
+
+  .action-button {
+    width: 100%;
   }
 }
 
@@ -337,7 +435,9 @@ input[type='file'] {
   /* Hide all UI elements except the calendar table */
   .hero,
   .controls-panel,
-  .error-banner {
+  .error-banner,
+  .button-group,
+  .saved-urls-section {
     display: none;
   }
 

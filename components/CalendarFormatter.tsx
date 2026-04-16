@@ -1,7 +1,8 @@
 'use client';
 
-import { useMemo, useState, type ChangeEvent } from 'react';
+import { useMemo, useState, useEffect, type ChangeEvent } from 'react';
 import ICAL from 'ical.js';
+import { getSavedCalendarUrls, saveCalendarUrl, removeCalendarUrl, getDisplaySettings, saveDisplaySettings } from '../lib/cookies';
 
 type EventSpec = {
   id: string;
@@ -160,18 +161,36 @@ function getVisibleOccurrences(events: EventSpec[], rangeStart: Date, rangeEnd: 
 }
 
 export default function CalendarFormatter() {
+  // Initialize state with saved settings or defaults
+  const [daysShown, setDaysShown] = useState(() => getDisplaySettings()?.daysShown ?? 5);
+  const [weekStartDay, setWeekStartDay] = useState(() => getDisplaySettings()?.weekStartDay ?? 'monday');
+  const [weekCount, setWeekCount] = useState(() => getDisplaySettings()?.weekCount ?? 10);
+  const [defaultEventColor, setDefaultEventColor] = useState(() => getDisplaySettings()?.defaultEventColor ?? '#2563eb');
+
   const [calendarUrl, setCalendarUrl] = useState('');
   const [icsText, setIcsText] = useState('');
   const [events, setEvents] = useState<EventSpec[]>([]);
   const [termStart, setTermStart] = useState(() => new Date().toISOString().slice(0, 10));
-  const [daysShown, setDaysShown] = useState(5);
-  const [weekStartDay, setWeekStartDay] = useState('monday');
-  const [weekCount, setWeekCount] = useState(10);
-  const [defaultEventColor, setDefaultEventColor] = useState('#2563eb');
   const [controlsOpen, setControlsOpen] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [sourceLabel, setSourceLabel] = useState('No calendar loaded yet.');
+  const [savedUrls, setSavedUrls] = useState<string[]>([]);
+
+  // Load saved URLs from cookies on mount
+  useEffect(() => {
+    setSavedUrls(getSavedCalendarUrls());
+  }, []);
+
+  // Save display settings to cookies whenever they change
+  useEffect(() => {
+    saveDisplaySettings({
+      daysShown,
+      weekStartDay,
+      weekCount,
+      defaultEventColor,
+    });
+  }, [daysShown, weekStartDay, weekCount, defaultEventColor]);
 
   const rows = useMemo(() => {
     const termDate = normalizeDate(new Date(termStart));
@@ -274,6 +293,24 @@ export default function CalendarFormatter() {
     reader.readAsText(file, 'utf-8');
   };
 
+  const handleSaveUrl = () => {
+    if (!calendarUrl.trim()) {
+      setError('Please enter a URL to save.');
+      return;
+    }
+    const updated = saveCalendarUrl(calendarUrl.trim());
+    setSavedUrls(updated);
+  };
+
+  const handleLoadSavedUrl = (url: string) => {
+    setCalendarUrl(url);
+  };
+
+  const handleRemoveSavedUrl = (url: string) => {
+    const updated = removeCalendarUrl(url);
+    setSavedUrls(updated);
+  };
+
   return (
     <div className="calendar-builder">
       <section className="hero">
@@ -371,9 +408,42 @@ export default function CalendarFormatter() {
               onChange={(event) => setCalendarUrl(event.target.value)}
             />
           </div>
-          <button type="button" className="action-button" onClick={handleUrlLoad} disabled={loading}>
-            {loading ? 'Loading...' : 'Load calendar URL'}
-          </button>
+          <div className="button-group">
+            <button type="button" className="action-button" onClick={handleUrlLoad} disabled={loading}>
+              {loading ? 'Loading...' : 'Load calendar URL'}
+            </button>
+            <button type="button" className="action-button secondary" onClick={handleSaveUrl}>
+              Save this URL
+            </button>
+          </div>
+
+          {savedUrls.length > 0 && (
+            <div className="saved-urls-section">
+              <h3>Saved calendar sources</h3>
+              <ul className="saved-urls-list">
+                {savedUrls.map((url) => (
+                  <li key={url} className="saved-url-item">
+                    <button
+                      type="button"
+                      className="saved-url-link"
+                      onClick={() => handleLoadSavedUrl(url)}
+                      title={url}
+                    >
+                      {new URL(url).hostname || 'Unnamed source'}
+                    </button>
+                    <button
+                      type="button"
+                      className="remove-button"
+                      onClick={() => handleRemoveSavedUrl(url)}
+                      title="Remove this URL"
+                    >
+                      ✕
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           <div className="divider" />
 
