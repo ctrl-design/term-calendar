@@ -6,6 +6,11 @@ const CALENDAR_URLS_COOKIE = 'calendar_urls';
 const DISPLAY_SETTINGS_COOKIE = 'calendar_display_settings';
 const COOKIE_EXPIRY_DAYS = 365; // Store for 1 year
 
+export type CalendarSource = {
+  url: string;
+  nickname?: string;
+};
+
 export type DisplaySettings = {
   weekStartDay: string;
   daysShown: number;
@@ -14,9 +19,10 @@ export type DisplaySettings = {
 };
 
 /**
- * Get all saved calendar URLs from cookies
+ * Get all saved calendar sources from cookies
+ * Handles both legacy string array format and new object format
  */
-export function getSavedCalendarUrls(): string[] {
+export function getSavedCalendarUrls(): CalendarSource[] {
   if (typeof document === 'undefined') {
     return [];
   }
@@ -31,7 +37,16 @@ export function getSavedCalendarUrls(): string[] {
       return [];
     }
 
-    return JSON.parse(decodeURIComponent(cookie));
+    const parsed = JSON.parse(decodeURIComponent(cookie));
+    
+    // Handle legacy format (array of strings) and convert to new format
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      if (typeof parsed[0] === 'string') {
+        return parsed.map((url: string) => ({ url, nickname: undefined }));
+      }
+    }
+    
+    return parsed || [];
   } catch {
     return [];
   }
@@ -40,17 +55,17 @@ export function getSavedCalendarUrls(): string[] {
 /**
  * Save a calendar URL to cookies (deduplicates, keeps most recent first)
  */
-export function saveCalendarUrl(url: string): string[] {
-  const urls = getSavedCalendarUrls();
+export function saveCalendarUrl(url: string, nickname?: string): CalendarSource[] {
+  const sources = getSavedCalendarUrls();
   const normalizedUrl = url.trim();
 
   if (!normalizedUrl) {
-    return urls;
+    return sources;
   }
 
   // Remove if already exists, then add to front
-  const filtered = urls.filter((u) => u !== normalizedUrl);
-  const updated = [normalizedUrl, ...filtered];
+  const filtered = sources.filter((s) => s.url !== normalizedUrl);
+  const updated = [{ url: normalizedUrl, nickname }, ...filtered];
 
   // Store in cookie
   const expires = new Date();
@@ -62,11 +77,26 @@ export function saveCalendarUrl(url: string): string[] {
 }
 
 /**
+ * Update the nickname for a saved calendar URL
+ */
+export function updateCalendarNickname(url: string, nickname: string): CalendarSource[] {
+  const sources = getSavedCalendarUrls();
+  const updated = sources.map((s) => (s.url === url ? { ...s, nickname: nickname || undefined } : s));
+
+  const expires = new Date();
+  expires.setDate(expires.getDate() + COOKIE_EXPIRY_DAYS);
+
+  document.cookie = `${CALENDAR_URLS_COOKIE}=${encodeURIComponent(JSON.stringify(updated))}; expires=${expires.toUTCString()}; path=/; SameSite=Lax`;
+
+  return updated;
+}
+
+/**
  * Remove a calendar URL from cookies
  */
-export function removeCalendarUrl(url: string): string[] {
-  const urls = getSavedCalendarUrls();
-  const updated = urls.filter((u) => u !== url);
+export function removeCalendarUrl(url: string): CalendarSource[] {
+  const sources = getSavedCalendarUrls();
+  const updated = sources.filter((s) => s.url !== url);
 
   if (updated.length === 0) {
     // Delete the cookie if no URLs remain

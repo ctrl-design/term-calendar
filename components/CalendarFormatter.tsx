@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect, type ChangeEvent } from 'react';
 import ICAL from 'ical.js';
-import { getSavedCalendarUrls, saveCalendarUrl, removeCalendarUrl, getDisplaySettings, saveDisplaySettings } from '../lib/cookies';
+import { getSavedCalendarUrls, saveCalendarUrl, removeCalendarUrl, updateCalendarNickname, getDisplaySettings, saveDisplaySettings, type CalendarSource } from '../lib/cookies';
 
 type EventSpec = {
   id: string;
@@ -89,10 +89,34 @@ function eventOverlapsDay(event: EventSpec, day: Date) {
   return event.start < endOfDay && event.end > startOfDay;
 }
 
-function parseIcs(text: string): EventSpec[] {
+function parseIcs(text: string): { events: EventSpec[], calendarName: string | null } {
   const raw = ICAL.parse(text);
   const root = new ICAL.Component(raw);
   const vevents = root.getAllSubcomponents('vevent');
+
+  // Extract calendar name from VCALENDAR component
+  let calendarName: string | null = null;
+  try {
+    // Try common calendar name properties
+    calendarName = 
+      root.getFirstPropertyValue('x-wr-calname') ||
+      root.getFirstPropertyValue('calscale') ||
+      null;
+    
+    // If no calendar name found, try to use prodid or name
+    if (!calendarName) {
+      const prodid = root.getFirstPropertyValue('prodid');
+      if (prodid && typeof prodid === 'string') {
+        // Extract clean name from prodid (e.g., "-//Google Inc//Google Calendar//EN" -> "Google Calendar")
+        const match = prodid.match(/\/\/([^\/]+)\/\//);
+        if (match && match[1]) {
+          calendarName = match[1];
+        }
+      }
+    }
+  } catch {
+    // Silently fail to extract calendar name
+  }
 
   // Helper to safely convert ICAL.Time to JS Date, preserving time component
   const toDatePreservingTime = (time: any): Date => {
@@ -119,7 +143,7 @@ function parseIcs(text: string): EventSpec[] {
     return time.toJSDate?.() ?? new Date();
   };
 
-  return vevents.map((component: any, index: number) => {
+  const events = vevents.map((component: any, index: number) => {
     const event = new ICAL.Event(component);
 
     const color =
@@ -145,7 +169,10 @@ function parseIcs(text: string): EventSpec[] {
       eventObject: event,
     };
   });
+
+  return { events, calendarName };
 }
+
 
 function getRecurringOccurrences(eventSpec: EventSpec, rangeStart: Date, rangeEnd: Date) {
   if (!eventSpec.isRecurring || typeof eventSpec.eventObject.iterator !== 'function') {
@@ -226,7 +253,9 @@ export default function CalendarFormatter() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [sourceLabel, setSourceLabel] = useState('No calendar loaded yet.');
-  const [savedUrls, setSavedUrls] = useState<string[]>([]);
+  const [savedUrls, setSavedUrls] = useState<CalendarSource[]>([]);
+  const [editingUrl, setEditingUrl] = useState<string | null>(null);
+  const [editingNickname, setEditingNickname] = useState('');
 
   // Load saved URLs from cookies on mount
   useEffect(() => {
@@ -273,13 +302,23 @@ export default function CalendarFormatter() {
   const loadIcsFromText = (text: string, source = 'manual input') => {
     setError('');
     try {
-      const parsed = parseIcs(text);
-      if (!parsed.length) {
+      const { events, calendarName } = parseIcs(text);
+      if (!events.length) {
         setError('No VEVENT items were found in the calendar file.');
         return;
       }
-      setEvents(parsed);
-      setSourceLabel(`Loaded from ${source}. ${parsed.length} event${parsed.length === 1 ? '' : 's'} parsed.`);
+      setEvents(events);
+      setSourceLabel(`Loaded from ${source}. ${events.length} event${events.length === 1 ? '' : 's'} parsed.`);
+
+      // Auto-set nickname if calendar was loaded from a URL and has no nickname
+      if (calendarName && calendarUrl.trim()) {
+        const normalizedUrl = calendarUrl.trim();
+        const source = savedUrls.find((s) => s.url === normalizedUrl);
+        if (source && !source.nickname) {
+          const updated = updateCalendarNickname(normalizedUrl, calendarName);
+          setSavedUrls(updated);
+        }
+      }
     } catch (err) {
       setError((err as Error).message || 'Unable to parse the iCal data.');
     }
@@ -353,13 +392,26 @@ export default function CalendarFormatter() {
     setSavedUrls(updated);
   };
 
-  const handleLoadSavedUrl = (url: string) => {
-    setCalendarUrl(url);
+  const handleLoadSavedUrl = (source: CalendarSource) => {
+    setCalendarUrl(source.url);
   };
 
   const handleRemoveSavedUrl = (url: string) => {
     const updated = removeCalendarUrl(url);
     setSavedUrls(updated);
+    setEditingUrl(null);
+  };
+
+  const handleStartEditingNickname = (source: CalendarSource) => {
+    setEditingUrl(source.url);
+    setEditingNickname(source.nickname || '');
+  };
+
+  const handleSaveNickname = (url: string) => {
+    const updated = updateCalendarNickname(url, editingNickname);
+    setSavedUrls(updated);
+    setEditingUrl(null);
+    setEditingNickname('');
   };
 
   return (
@@ -472,24 +524,65 @@ export default function CalendarFormatter() {
             <div className="saved-urls-section">
               <h3>Saved calendar sources</h3>
               <ul className="saved-urls-list">
-                {savedUrls.map((url) => (
-                  <li key={url} className="saved-url-item">
-                    <button
-                      type="button"
-                      className="saved-url-link"
-                      onClick={() => handleLoadSavedUrl(url)}
-                      title={url}
-                    >
-                      {new URL(url).hostname || 'Unnamed source'}
-                    </button>
-                    <button
-                      type="button"
-                      className="remove-button"
-                      onClick={() => handleRemoveSavedUrl(url)}
-                      title="Remove this URL"
-                    >
-                      ✕
-                    </button>
+                {savedUrls.map((source) => (
+                  <li key={source.url} className="saved-url-item">
+                    <div className="saved-url-content">
+                      <button
+                        type="button"
+                        className="saved-url-link"
+                        onClick={() => handleLoadSavedUrl(source)}
+                        title={source.url}
+                      >
+                        {source.nickname || new URL(source.url).hostname || 'Unnamed source'}
+                      </button>
+                      {editingUrl === source.url ? (
+                        <div className="nickname-edit">
+                          <input
+                            type="text"
+                            value={editingNickname}
+                            onChange={(e) => setEditingNickname(e.target.value)}
+                            placeholder="Enter nickname (optional)"
+                            className="nickname-input"
+                          />
+                          <button
+                            type="button"
+                            className="save-button"
+                            onClick={() => handleSaveNickname(source.url)}
+                          >
+                            Save
+                          </button>
+                          <button
+                            type="button"
+                            className="cancel-button"
+                            onClick={() => {
+                              setEditingUrl(null);
+                              setEditingNickname('');
+                            }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            className="edit-button"
+                            onClick={() => handleStartEditingNickname(source)}
+                            title="Edit nickname"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            className="remove-button"
+                            onClick={() => handleRemoveSavedUrl(source.url)}
+                            title="Remove this URL"
+                          >
+                            ✕
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </li>
                 ))}
               </ul>

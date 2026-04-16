@@ -388,6 +388,79 @@ input[type='file'] {
   color: #991b1b;
 }
 
+.saved-url-content {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  width: 100%;
+}
+
+.edit-button {
+  background: none;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.edit-button:hover {
+  color: #2563eb;
+}
+
+.nickname-edit {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex: 1;
+  width: 100%;
+}
+
+.nickname-input {
+  flex: 1;
+  padding: 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.4rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+}
+
+.nickname-input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.save-button,
+.cancel-button {
+  background: none;
+  border: 1px solid #d1d5db;
+  color: #374151;
+  cursor: pointer;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border-radius: 0.4rem;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.save-button:hover {
+  background: #10b981;
+  color: white;
+  border-color: #10b981;
+}
+
+.cancel-button:hover {
+  background: #ef4444;
+  color: white;
+  border-color: #ef4444;
+}
+
 @media (max-width: 900px) {
   .calendar-table {
     min-width: 600px;
