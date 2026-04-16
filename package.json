@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "eslint . --ext .ts,.tsx,.js,.jsx"
   },
   "dependencies": {
     "@vercel/analytics": "^2.0.1",
@@ -16,9 +16,14 @@
     "react-dom": "19.1.0"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.5",
     "@types/node": "20.14.3",
     "@types/react": "19.1.0",
     "@types/react-dom": "19.1.0",
+    "@typescript-eslint/eslint-plugin": "^8.58.2",
+    "@typescript-eslint/parser": "^8.58.2",
+    "eslint": "^8.57.1",
+    "eslint-plugin-react": "^7.37.5",
     "typescript": "5.6.2"
   }
 }
