@@ -416,14 +416,6 @@ export default function CalendarFormatter() {
 
   return (
     <div className="calendar-builder">
-      <section className="hero">
-        <h1>Term Calendar Formatter</h1>
-        <p>
-          Load an iCal calendar, configure the term start date and visible days, and render a week-based table with
-          week numbers and event tiles.
-        </p>
-      </section>
-
       <details
         className="controls-panel"
         open={controlsOpen}
@@ -527,23 +519,26 @@ export default function CalendarFormatter() {
                 {savedUrls.map((source) => (
                   <li key={source.url} className="saved-url-item">
                     <div className="saved-url-content">
-                      <button
-                        type="button"
-                        className="saved-url-link"
-                        onClick={() => handleLoadSavedUrl(source)}
-                        title={source.url}
-                      >
-                        {source.nickname || new URL(source.url).hostname || 'Unnamed source'}
-                      </button>
                       {editingUrl === source.url ? (
-                        <div className="nickname-edit">
-                          <input
-                            type="text"
-                            value={editingNickname}
-                            onChange={(e) => setEditingNickname(e.target.value)}
-                            placeholder="Enter nickname (optional)"
-                            className="nickname-input"
-                          />
+                        <input
+                          type="text"
+                          value={editingNickname}
+                          onChange={(e) => setEditingNickname(e.target.value)}
+                          placeholder="Enter nickname (optional)"
+                          className="saved-url-link nickname-input"
+                        />
+                      ) : (
+                        <button
+                          type="button"
+                          className="saved-url-link"
+                          onClick={() => handleLoadSavedUrl(source)}
+                          title={source.url}
+                        >
+                          {source.nickname || new URL(source.url).hostname || 'Unnamed source'}
+                        </button>
+                      )}
+                      {editingUrl === source.url ? (
+                        <>
                           <button
                             type="button"
                             className="save-button"
@@ -561,7 +556,7 @@ export default function CalendarFormatter() {
                           >
                             Cancel
                           </button>
-                        </div>
+                        </>
                       ) : (
                         <>
                           <button
