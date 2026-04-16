@@ -94,6 +94,31 @@ function parseIcs(text: string): EventSpec[] {
   const root = new ICAL.Component(raw);
   const vevents = root.getAllSubcomponents('vevent');
 
+  // Helper to safely convert ICAL.Time to JS Date, preserving time component
+  const toDatePreservingTime = (time: any): Date => {
+    if (!time) return new Date();
+
+    try {
+      // If this is an ICAL.Time object with time components, use them directly
+      // This preserves the intended local time without timezone conversion issues
+      if (time._time) {
+        const t = time._time;
+        const year = t.year;
+        const month = t.month - 1; // JS months are 0-indexed
+        const day = t.day;
+        const hour = t.hour || 0;
+        const minute = t.minute || 0;
+        const second = t.second || 0;
+        return new Date(year, month, day, hour, minute, second);
+      }
+    } catch {
+      // Fall back if direct component access fails
+    }
+
+    // Fall back to toJSDate for non-ICAL.Time objects
+    return time.toJSDate?.() ?? new Date();
+  };
+
   return vevents.map((component: any, index: number) => {
     const event = new ICAL.Event(component);
 
@@ -103,16 +128,19 @@ function parseIcs(text: string): EventSpec[] {
       component.getFirstPropertyValue('x-google-calendar-color') ||
       component.getFirstPropertyValue('x-microsoft-categories');
 
+    const startDate = toDatePreservingTime(event.startDate);
+    const endDate = toDatePreservingTime(event.endDate);
+
     return {
-      id: event.uid || `ev-${index}-${event.startDate.toJSDate().getTime()}`,
+      id: event.uid || `ev-${index}-${startDate.getTime()}`,
       summary: event.summary || 'Untitled event',
       description: event.description,
       location: event.location,
       color: typeof color === 'string' ? color : undefined,
       htmlDescription: component.getFirstPropertyValue('x-alt-desc'),
       allDay: event.startDate?.isDate ?? false,
-      start: event.startDate?.toJSDate() ?? new Date(),
-      end: event.endDate?.toJSDate() ?? new Date(),
+      start: startDate,
+      end: endDate,
       isRecurring: Boolean(event.isRecurring && event.isRecurring()),
       eventObject: event,
     };
@@ -124,6 +152,29 @@ function getRecurringOccurrences(eventSpec: EventSpec, rangeStart: Date, rangeEn
     return [];
   }
 
+  // Helper to safely convert ICAL.Time to JS Date, preserving time component
+  const toDatePreservingTime = (time: any): Date => {
+    if (!time) return new Date();
+
+    try {
+      // If this is an ICAL.Time object with time components, use them directly
+      if (time._time) {
+        const t = time._time;
+        const year = t.year;
+        const month = t.month - 1; // JS months are 0-indexed
+        const day = t.day;
+        const hour = t.hour || 0;
+        const minute = t.minute || 0;
+        const second = t.second || 0;
+        return new Date(year, month, day, hour, minute, second);
+      }
+    } catch {
+      // Fall back if direct component access fails
+    }
+
+    return time.toJSDate?.() ?? new Date();
+  };
+
   const occurrences: EventSpec[] = [];
   const duration = eventSpec.end.getTime() - eventSpec.start.getTime();
   let iterator = eventSpec.eventObject.iterator(ICAL.Time.fromJSDate(rangeStart, true));
@@ -132,7 +183,7 @@ function getRecurringOccurrences(eventSpec: EventSpec, rangeStart: Date, rangeEn
     const next = iterator.next();
     if (!next) break;
 
-    const start = next.toJSDate();
+    const start = toDatePreservingTime(next);
     if (start >= rangeEnd) break;
 
     const end = new Date(start.getTime() + duration);
