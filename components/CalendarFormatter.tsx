@@ -67,7 +67,7 @@ function formatTimeLabel(event: EventSpec) {
 
   const startLabel = event.start.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
   const endLabel = event.end.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-  return `${startLabel} – ${endLabel}`;
+  return `${startLabel}\n${endLabel}`;
 }
 
 function computeTextColor(background: string) {
