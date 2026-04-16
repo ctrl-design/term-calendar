@@ -18,6 +18,7 @@ type EventSpec = {
   eventObject: any;
 };
 
+// Note: CalendarRow type is used in the generated rows object
 type CalendarRow = {
   weekNumber: number;
   days: Date[];
@@ -108,7 +109,7 @@ function parseIcs(text: string): { events: EventSpec[], calendarName: string | n
       const prodid = root.getFirstPropertyValue('prodid');
       if (prodid && typeof prodid === 'string') {
         // Extract clean name from prodid (e.g., "-//Google Inc//Google Calendar//EN" -> "Google Calendar")
-        const match = prodid.match(/\/\/([^\/]+)\/\//);
+        const match = prodid.match(/\/\/([^/]+)\/\//);  // eslint-disable-line no-useless-escape
         if (match && match[1]) {
           calendarName = match[1];
         }
@@ -204,7 +205,7 @@ function getRecurringOccurrences(eventSpec: EventSpec, rangeStart: Date, rangeEn
 
   const occurrences: EventSpec[] = [];
   const duration = eventSpec.end.getTime() - eventSpec.start.getTime();
-  let iterator = eventSpec.eventObject.iterator(ICAL.Time.fromJSDate(rangeStart, true));
+  const iterator = eventSpec.eventObject.iterator(ICAL.Time.fromJSDate(rangeStart, true));
 
   for (let i = 0; i < 500; i += 1) {
     const next = iterator.next();
@@ -272,7 +273,7 @@ export default function CalendarFormatter() {
     });
   }, [daysShown, weekStartDay, weekCount, defaultEventColor]);
 
-  const rows = useMemo(() => {
+  const rows = useMemo((): CalendarRow[] => {
     const termDate = normalizeDate(new Date(termStart));
     const gridStart = getWeekStart(termDate, weekStartDay);
 
