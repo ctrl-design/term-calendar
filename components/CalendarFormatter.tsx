@@ -167,6 +167,7 @@ export default function CalendarFormatter() {
   const [daysShown, setDaysShown] = useState(5);
   const [weekStartDay, setWeekStartDay] = useState('monday');
   const [weekCount, setWeekCount] = useState(10);
+  const [defaultEventColor, setDefaultEventColor] = useState('#2563eb');
   const [controlsOpen, setControlsOpen] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -342,6 +343,16 @@ export default function CalendarFormatter() {
             </div>
           </div>
 
+          <div className="field-group">
+            <label htmlFor="defaultEventColor">Default event colour</label>
+            <input
+              id="defaultEventColor"
+              type="color"
+              value={defaultEventColor}
+              onChange={(event) => setDefaultEventColor(event.target.value)}
+            />
+          </div>
+
           <div className="status-panel">
             <p>{sourceLabel}</p>
             <p>{events.length ? `${events.length} calendar event definitions loaded.` : 'No calendar events loaded yet.'}</p>
@@ -427,7 +438,7 @@ export default function CalendarFormatter() {
                       {dayEvents.length ? (
                         <div className="event-list">
                           {dayEvents.map((event) => {
-                            const background = event.color || '#2563eb';
+                            const background = event.color || defaultEventColor;
                             const textColor = computeTextColor(background);
                             return (
                               <div
